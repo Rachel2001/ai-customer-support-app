@@ -36,9 +36,32 @@ export default function Home() {
       body: JSON.stringify([...messages, userMessage]),
     });
 
-    const data = await response.json();
-    setMessages((prevMessages) => [...prevMessages, data]);
-    setIsLoading(false);
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let result = '';
+
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            result += decoder.decode(value, { stream: true });
+            setMessages((prevMessages) => {
+              const lastMessage = prevMessages[prevMessages.length - 1];
+              const otherMessages = prevMessages.slice(0, -1);
+              return [...otherMessages, { ...lastMessage, content: result }];
+            });
+          }
+        } catch (error) {
+          console.error('Error reading stream:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      },
+    });
+
+    await stream;
   };
 
   const sendFeedback = async () => {
