@@ -16,6 +16,7 @@
     "@mui/material": "^5.16.6",
     "@mui/styled-engine-sc": "^6.0.0-alpha.18",
     "autoprefixer": "^10.4.20",
+    "firebase": "^10.12.5",
     "framer-motion": "^11.3.24",
     "next": "14.2.5",
     "openai": "^4.55.1",

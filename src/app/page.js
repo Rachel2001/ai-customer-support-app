@@ -5,6 +5,9 @@ import { useState, useRef, useEffect } from 'react';
 import { AccountCircle, SupportAgent } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import { motion } from 'framer-motion'; // Import motion
+import { firestore } from '../../firebase';
+import { collection, addDoc } from 'firebase/firestore';
+import { doc, setDoc, getDocs, query, orderBy, limit } from 'firebase/firestore';
 
 export default function Home() {
   const [messages, setMessages] = useState([
@@ -75,6 +78,37 @@ export default function Home() {
       console.error('Error sending feedback:', error);
     } finally {
       setFeedback('');
+    }
+  };
+
+  const updateInventory = async () => {
+    if (!feedback.trim()) return;
+  
+    try {
+      // Get the last document in the collection
+      const feedbackCollection = collection(firestore, 'Feedback');
+      const feedbackQuery = query(feedbackCollection, orderBy('id', 'desc'), limit(1));
+      const feedbackSnapshot = await getDocs(feedbackQuery);
+      
+      let newId = 1; // Default to 1 if there are no documents yet
+      if (!feedbackSnapshot.empty) {
+        const lastDoc = feedbackSnapshot.docs[0];
+        const lastId = lastDoc.data().id;
+        newId = lastId + 1;
+      }
+  
+      // Add the new feedback with the incremented ID
+      const newDocRef = doc(feedbackCollection, newId.toString()); // Use newId as the document ID
+      await setDoc(newDocRef, {
+        id: newId, // Store the ID in the document 
+        feedback: feedback.trim(),
+        timestamp: new Date(), 
+      });
+  
+      setFeedback('');  
+      console.log('Feedback sent successfully with ID:', newId);
+    } catch (error) {
+      console.error('Error sending feedback:', error);
     }
   };
 
@@ -257,10 +291,11 @@ export default function Home() {
           />
           <Button
             variant="contained"
-            onClick={sendFeedback}
-            disabled={!feedback.trim()}
-            style={{ borderRadius: '16px' }}
-          >
+            onClick={() => { 
+              sendFeedback(); 
+              updateInventory(); 
+            }}
+            >
             Submit Feedback
           </Button>
         </Stack>
