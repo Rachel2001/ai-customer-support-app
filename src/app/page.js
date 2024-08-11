@@ -29,31 +29,53 @@ export default function Home() {
     setMessage('');
     setIsLoading(true);
 
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify([...messages, userMessage]),
-    });
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify([...messages, userMessage]),
+      });
 
-    const data = await response.json();
-    setMessages((prevMessages) => [...prevMessages, data]);
-    setIsLoading(false);
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let result = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const text = decoder.decode(value || new Uint8Array(), { stream: true });
+        result += text;
+      }
+
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { role: 'assistant', content: result },
+      ]);
+    } catch (error) {
+      console.error('Error sending message:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const sendFeedback = async () => {
     if (!feedback.trim()) return;
 
-    await fetch('/api/feedback', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ feedback: feedback.trim() }),
-    });
-
-    setFeedback('');
+    try {
+      await fetch('/api/feedback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ feedback: feedback.trim() }),
+      });
+    } catch (error) {
+      console.error('Error sending feedback:', error);
+    } finally {
+      setFeedback('');
+    }
   };
 
   const handleKeyPress = (event) => {
